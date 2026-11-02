@@ -1,6 +1,18 @@
+// =====================================================
+// THE VINYL ROOM
+// Guest Speaker Learning Journal
+// =====================================================
+
+// Storage key
 const KEY = 'vinyl-room-v1';
 
+// =====================================================
+// PUBLISHED GUEST SPEAKER SESSIONS
+// =====================================================
+
 const demo = [
+
+  // SESSION 01 — VIBE CODING
   {
     id: 'session-1',
     speaker: 'LaunchLab Team',
@@ -29,6 +41,7 @@ const demo = [
     reflection: `This session was particularly meaningful because it challenged my perception of what I could create without a technical background. Coming from a marketing and management background, I have always been more interested in the creative and strategic sides of digital projects than in coding itself. However, discovering how AI-powered tools can bridge the gap between an idea and its execution made me realise that technical knowledge is no longer the only factor determining what we can build. The most exciting part was having the opportunity to apply what we learned to a real project. Creating The Vinyl Room allowed me to combine my interest in creativity, design and storytelling with technologies I had never used before. Of course, the process wasn’t entirely straightforward. Moving between different platforms, understanding GitHub and deploying the website through Vercel required patience and experimentation. But that was probably the most valuable part of the experience. My biggest takeaway is that AI doesn’t replace creativity; it gives us new ways to express it. As someone interested in branding and digital marketing, I see enormous potential in using these tools to prototype ideas, create interactive brand experiences and bring creative concepts to life more independently.`
   },
 
+  // SESSION 02 — AI MARKETING TEAM
   {
     id: 'session-2',
     speaker: 'Nick Goh',
@@ -74,15 +87,20 @@ The Production Team
 
     reflection: `What I found most interesting about this session was the shift from thinking about AI as a tool to understanding it as part of an entire marketing workflow. Before this session, I mainly associated generative AI with individual tasks such as brainstorming, writing content, or generating visuals. Seeing how different AI agents could collaborate across the entire campaign development process made me reconsider how marketing teams might operate in the future. The Louis Vuitton example was particularly relevant: it showed how AI can support the development of a campaign from the initial brief to the final creative execution. However, it also raised an important question for me: If AI can generate increasingly sophisticated creative content, what will truly differentiate one brand from another? I believe the answer lies in strategic thinking, originality and a deep understanding of consumers. AI can accelerate the creative process, but it cannot automatically guarantee that an idea is meaningful, distinctive, or relevant to a brand’s audience. Another aspect I appreciated was the importance given to human approval within the workflow. To me, this reinforces the idea that the future of marketing is not necessarily about replacing people with AI, but about learning how to combine human expertise with technological capabilities. My biggest takeaway is that the real competitive advantage won’t come simply from using AI, but from knowing how to direct it strategically and creatively. As I continue developing my skills in marketing and branding, I see this as an increasingly important capability for future marketing professionals.`
   }
+
 ];
 
-// Load saved records, if available.
-// Merge published sessions with any personal records saved in the browser.
+// =====================================================
+// LOAD DATA
+// =====================================================
+
 let state;
 
 try {
   state = JSON.parse(localStorage.getItem(KEY));
-} catch {}
+} catch (error) {
+  state = null;
+}
 
 if (
   !state ||
@@ -94,138 +112,259 @@ if (
     reflections: []
   };
 } else {
+
   const publishedIds = new Set(demo.map(r => r.id));
 
   state.records = [
     ...demo,
-    ...state.records.filter(r => !publishedIds.has(r.id))
+    ...state.records.filter(r =>
+      !publishedIds.has(r.id) &&
+      !String(r.id).startsWith('demo-')
+    )
   ];
+
 }
 
-const $ = s => document.querySelector(s);
+// =====================================================
+// HELPERS
+// =====================================================
 
-const esc = s =>
-  String(s ?? '').replace(/[&<>"']/g, c => ({
+const $ = selector => document.querySelector(selector);
+
+const esc = value =>
+  String(value ?? '').replace(/[&<>"']/g, char => ({
     '&': '&amp;',
     '<': '&lt;',
     '>': '&gt;',
     '"': '&quot;',
     "'": '&#39;'
-  }[c]));
+  }[char]));
 
-const persist = () => {
+function persist() {
+
   try {
+
     localStorage.setItem(KEY, JSON.stringify(state));
+
     toast('Saved in this browser ✓');
-  } catch {
+
+  } catch (error) {
+
     toast('Storage unavailable — export a backup');
+
   }
-};
+
+}
 
 function toast(message) {
-  const el = $('#toast');
-  el.textContent = message;
-  el.classList.add('show');
+
+  const element = $('#toast');
+
+  element.textContent = message;
+  element.classList.add('show');
 
   clearTimeout(window.toastTimer);
 
-  window.toastTimer = setTimeout(
-    () => el.classList.remove('show'),
-    2400
-  );
+  window.toastTimer = setTimeout(() => {
+    element.classList.remove('show');
+  }, 2400);
+
 }
 
-function renderRecords() {
-  const q = $('#search').value.toLowerCase();
-  const cat = $('#category').value;
+// =====================================================
+// RENDER GUEST SPEAKER RECORDS
+// =====================================================
 
-  const items = state.records.filter(r =>
-    (!cat || r.category === cat) &&
-    [
-      r.speaker,
-      r.company,
-      r.title,
-      r.category,
-      r.notes,
-      r.takeaways
-    ].join(' ').toLowerCase().includes(q)
-  );
+function renderRecords() {
+
+  const query = $('#search').value.toLowerCase();
+  const category = $('#category').value;
+
+  const items = state.records.filter(record => {
+
+    const matchesCategory =
+      !category || record.category === category;
+
+    const searchableText = [
+      record.speaker,
+      record.company,
+      record.title,
+      record.category,
+      record.notes,
+      record.takeaways
+    ].join(' ').toLowerCase();
+
+    return matchesCategory &&
+      searchableText.includes(query);
+
+  });
 
   $('#count').textContent =
     `${items.length} RECORD${items.length === 1 ? '' : 'S'}`;
 
   $('#record-grid').innerHTML = items.length
-    ? items.map(r => `
+
+    ? items.map(record => `
+
       <article
         class="record-card"
         tabindex="0"
         role="button"
-        data-record="${esc(r.id)}"
-        aria-label="Open ${esc(r.title)}"
+        data-record="${esc(record.id)}"
+        aria-label="Open ${esc(record.title)}"
       >
-        <div class="sleeve ${esc(r.color)}">
+
+        <div class="sleeve ${esc(record.color)}">
+
           <span class="serial">
             THE VINYL ROOM /
-            ${String(state.records.indexOf(r) + 1).padStart(3, '0')}
+            ${String(
+              state.records.indexOf(record) + 1
+            ).padStart(3, '0')}
           </span>
 
           <div class="mini-record"></div>
-          <h3>${esc(r.title)}</h3>
+
+          <h3>${esc(record.title)}</h3>
+
         </div>
 
         <div class="card-meta">
-          ${esc(r.category)} /
-          ${esc(r.date || 'UNDATED SESSION')}
+          ${esc(record.category)} /
+          ${esc(record.date || 'UNDATED SESSION')}
         </div>
 
-        <div class="card-title">${esc(r.speaker)}</div>
-        <div class="card-sub">${esc(r.company)}</div>
+        <div class="card-title">
+          ${esc(record.speaker)}
+        </div>
+
+        <div class="card-sub">
+          ${esc(record.company)}
+        </div>
 
         <div class="card-bottom">
           <span>OPEN THE RECORD</span>
           <span class="arrow-circle">↗</span>
         </div>
+
       </article>
+
     `).join('')
+
     : '<div class="empty">No records found. Add a new one or change your search.</div>';
+
 }
 
+// =====================================================
+// RENDER MY REFLECTIONS — THE B-SIDE
+// =====================================================
+
 function renderReflections() {
-  $('#reflection-grid').innerHTML = state.reflections.length
-    ? state.reflections.map((r, i) => `
+
+  // Reflections connected to guest speaker sessions
+
+  const speakerReflections = state.records
+    .filter(record =>
+      record.reflection &&
+      record.reflection.trim() !== ''
+    )
+    .map(record => ({
+
+      id: record.id,
+      title: record.title,
+      body: record.reflection,
+      speaker: record.speaker,
+      type: 'record'
+
+    }));
+
+  // Independent reflections
+
+  const personalReflections = state.reflections.map(
+    reflection => ({
+
+      ...reflection,
+      type: 'personal'
+
+    })
+  );
+
+  // Combine all reflections
+
+  const allReflections = [
+    ...speakerReflections,
+    ...personalReflections
+  ];
+
+  $('#reflection-grid').innerHTML = allReflections.length
+
+    ? allReflections.map((reflection, index) => `
+
       <article
         class="reflection-card"
         tabindex="0"
         role="button"
-        data-reflection="${esc(r.id)}"
+        data-${reflection.type === 'record'
+          ? 'record'
+          : 'reflection'}="${esc(reflection.id)}"
       >
+
         <div class="kicker">
-          B-SIDE / ${String(i + 1).padStart(2, '0')}
+          B-SIDE /
+          ${String(index + 1).padStart(2, '0')}
         </div>
 
-        <h3>${esc(r.title)}</h3>
+        <h3>
+          ${esc(reflection.title)}
+        </h3>
+
+        ${
+          reflection.speaker
+            ? `<div class="card-sub">
+                ${esc(reflection.speaker)}
+               </div>`
+            : ''
+        }
 
         <p>
           ${esc(
-            r.body.length > 210
-              ? r.body.slice(0, 210) + '…'
-              : r.body
+            reflection.body.length > 210
+              ? reflection.body.slice(0, 210) + '…'
+              : reflection.body
           )}
         </p>
 
-        <small>OPEN TO EDIT ↗</small>
+        <small>
+          ${
+            reflection.type === 'record'
+              ? 'OPEN SESSION ↗'
+              : 'OPEN TO EDIT ↗'
+          }
+        </small>
+
       </article>
+
     `).join('')
+
     : '<div class="empty">Your B-side is waiting. Add your first personal reflection.</div>';
+
 }
 
+// =====================================================
+// OPEN RECORD EDITOR
+// =====================================================
+
 function openRecord(id) {
+
   const form = $('#editor-form');
+
   form.reset();
 
-  const r = state.records.find(x => x.id === id);
+  const record = state.records.find(
+    item => item.id === id
+  );
 
-  for (const name of [
+  const fields = [
     'id',
     'speaker',
     'company',
@@ -236,40 +375,72 @@ function openRecord(id) {
     'notes',
     'takeaways',
     'reflection'
-  ]) {
-    if (r && form.elements[name]) {
-      form.elements[name].value = r[name] ?? '';
+  ];
+
+  for (const name of fields) {
+
+    if (record && form.elements[name]) {
+
+      form.elements[name].value =
+        record[name] ?? '';
+
     }
+
   }
 
   $('#dialog-title').textContent =
-    r ? 'Edit the record' : 'Add a new record';
+    record ? 'Edit the record' : 'Add a new record';
 
   $('#dialog-kicker').textContent =
-    r ? 'NOW PLAYING / EDIT TRACKS' : 'NEW RELEASE';
+    record
+      ? 'NOW PLAYING / EDIT TRACKS'
+      : 'NEW RELEASE';
 
-  $('#delete-record').hidden = !r;
+  $('#delete-record').hidden = !record;
+
   $('#editor-dialog').showModal();
+
 }
 
+// =====================================================
+// OPEN PERSONAL REFLECTION EDITOR
+// =====================================================
+
 function openReflection(id) {
+
   const form = $('#reflection-form');
+
   form.reset();
 
-  const r = state.reflections.find(x => x.id === id);
+  const reflection = state.reflections.find(
+    item => item.id === id
+  );
 
-  if (r) {
+  if (reflection) {
+
     for (const name of ['id', 'title', 'body']) {
-      form.elements[name].value = r[name] ?? '';
+
+      form.elements[name].value =
+        reflection[name] ?? '';
+
     }
+
   }
 
   $('#reflection-title').textContent =
-    r ? 'Edit reflection' : 'New reflection';
+    reflection
+      ? 'Edit reflection'
+      : 'New reflection';
 
-  $('#delete-reflection').hidden = !r;
+  $('#delete-reflection').hidden = !reflection;
+
   $('#reflection-dialog').showModal();
+
 }
+
+// =====================================================
+// BUTTON EVENTS
+// =====================================================
 
 $('#add-record').onclick = () => openRecord();
 
@@ -279,179 +450,353 @@ $('#search').oninput = renderRecords;
 
 $('#category').onchange = renderRecords;
 
-$('#record-grid').addEventListener('click', e => {
-  const card = e.target.closest('[data-record]');
+// =====================================================
+// RECORD CARD CLICKS
+// =====================================================
+
+$('#record-grid').addEventListener('click', event => {
+
+  const card = event.target.closest('[data-record]');
 
   if (card) {
     openRecord(card.dataset.record);
   }
+
 });
 
-$('#reflection-grid').addEventListener('click', e => {
-  const card = e.target.closest('[data-reflection]');
+// =====================================================
+// REFLECTION CARD CLICKS
+// =====================================================
 
-  if (card) {
-    openReflection(card.dataset.reflection);
+$('#reflection-grid').addEventListener('click', event => {
+
+  const recordCard =
+    event.target.closest('[data-record]');
+
+  if (recordCard) {
+
+    openRecord(recordCard.dataset.record);
+    return;
+
   }
+
+  const reflectionCard =
+    event.target.closest('[data-reflection]');
+
+  if (reflectionCard) {
+
+    openReflection(
+      reflectionCard.dataset.reflection
+    );
+
+  }
+
 });
 
-for (const selector of ['#record-grid', '#reflection-grid']) {
-  $(selector).addEventListener('keydown', e => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      const card = e.target.closest(
+// =====================================================
+// KEYBOARD ACCESSIBILITY
+// =====================================================
+
+for (const selector of [
+  '#record-grid',
+  '#reflection-grid'
+]) {
+
+  $(selector).addEventListener('keydown', event => {
+
+    if (
+      event.key === 'Enter' ||
+      event.key === ' '
+    ) {
+
+      const card = event.target.closest(
         '[data-record],[data-reflection]'
       );
 
       if (card) {
-        e.preventDefault();
+
+        event.preventDefault();
         card.click();
+
       }
+
     }
+
   });
+
 }
 
-$('#editor-form').addEventListener('submit', e => {
-  e.preventDefault();
+// =====================================================
+// SAVE RECORD
+// =====================================================
 
-  const v = Object.fromEntries(new FormData(e.target));
+$('#editor-form').addEventListener('submit', event => {
 
-  if (v.id) {
-    const idx = state.records.findIndex(x => x.id === v.id);
+  event.preventDefault();
 
-    if (idx >= 0) {
-      state.records[idx] = v;
+  const values = Object.fromEntries(
+    new FormData(event.target)
+  );
+
+  if (values.id) {
+
+    const index = state.records.findIndex(
+      record => record.id === values.id
+    );
+
+    if (index >= 0) {
+
+      state.records[index] = values;
+
     }
+
   } else {
-    v.id = crypto.randomUUID?.() || String(Date.now());
-    state.records.unshift(v);
+
+    values.id =
+      crypto.randomUUID?.() ||
+      String(Date.now());
+
+    state.records.unshift(values);
+
   }
 
   persist();
+
   renderRecords();
-  $('#editor-dialog').close();
-});
 
-$('#reflection-form').addEventListener('submit', e => {
-  e.preventDefault();
-
-  const v = Object.fromEntries(new FormData(e.target));
-
-  if (v.id) {
-    const idx = state.reflections.findIndex(x => x.id === v.id);
-
-    if (idx >= 0) {
-      state.reflections[idx] = v;
-    }
-  } else {
-    v.id = crypto.randomUUID?.() || String(Date.now());
-    state.reflections.unshift(v);
-  }
-
-  persist();
   renderReflections();
-  $('#reflection-dialog').close();
+
+  $('#editor-dialog').close();
+
 });
+
+// =====================================================
+// SAVE PERSONAL REFLECTION
+// =====================================================
+
+$('#reflection-form').addEventListener(
+  'submit',
+  event => {
+
+    event.preventDefault();
+
+    const values = Object.fromEntries(
+      new FormData(event.target)
+    );
+
+    if (values.id) {
+
+      const index = state.reflections.findIndex(
+        reflection => reflection.id === values.id
+      );
+
+      if (index >= 0) {
+
+        state.reflections[index] = values;
+
+      }
+
+    } else {
+
+      values.id =
+        crypto.randomUUID?.() ||
+        String(Date.now());
+
+      state.reflections.unshift(values);
+
+    }
+
+    persist();
+
+    renderReflections();
+
+    $('#reflection-dialog').close();
+
+  }
+);
+
+// =====================================================
+// DELETE RECORD
+// =====================================================
 
 $('#delete-record').onclick = () => {
-  const id = $('#editor-form').elements.id.value;
+
+  const id =
+    $('#editor-form').elements.id.value;
 
   if (
     id &&
     confirm('Delete this record and all its notes?')
   ) {
-    state.records = state.records.filter(r => r.id !== id);
+
+    state.records = state.records.filter(
+      record => record.id !== id
+    );
+
     persist();
+
     renderRecords();
+
+    renderReflections();
+
     $('#editor-dialog').close();
+
   }
+
 };
 
+// =====================================================
+// DELETE PERSONAL REFLECTION
+// =====================================================
+
 $('#delete-reflection').onclick = () => {
-  const id = $('#reflection-form').elements.id.value;
+
+  const id =
+    $('#reflection-form').elements.id.value;
 
   if (
     id &&
     confirm('Delete this reflection?')
   ) {
+
     state.reflections = state.reflections.filter(
-      r => r.id !== id
+      reflection => reflection.id !== id
     );
 
     persist();
+
     renderReflections();
+
     $('#reflection-dialog').close();
+
   }
+
 };
 
-document.querySelectorAll('[data-close]').forEach(b => {
-  b.onclick = () => b.closest('dialog').close();
-});
+// =====================================================
+// CLOSE DIALOGS
+// =====================================================
+
+document.querySelectorAll('[data-close]').forEach(
+  button => {
+
+    button.onclick = () =>
+      button.closest('dialog').close();
+
+  }
+);
+
+// =====================================================
+// EXPORT BACKUP
+// =====================================================
 
 $('#export-data').onclick = () => {
+
+  const data = {
+    ...state,
+    exportedAt: new Date().toISOString()
+  };
+
   const blob = new Blob(
-    [
-      JSON.stringify(
-        {
-          ...state,
-          exportedAt: new Date().toISOString()
-        },
-        null,
-        2
-      )
-    ],
+    [JSON.stringify(data, null, 2)],
     { type: 'application/json' }
   );
 
-  const a = document.createElement('a');
+  const link = document.createElement('a');
 
-  a.href = URL.createObjectURL(blob);
-  a.download = 'the-vinyl-room-backup.json';
-  a.click();
+  link.href = URL.createObjectURL(blob);
 
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  link.download =
+    'the-vinyl-room-backup.json';
+
+  link.click();
+
+  setTimeout(() => {
+    URL.revokeObjectURL(link.href);
+  }, 1000);
+
 };
 
-$('#import-data').onchange = async e => {
-  const file = e.target.files[0];
+// =====================================================
+// IMPORT BACKUP
+// =====================================================
+
+$('#import-data').onchange = async event => {
+
+  const file = event.target.files[0];
 
   if (!file) return;
 
   try {
-    const data = JSON.parse(await file.text());
+
+    const data = JSON.parse(
+      await file.text()
+    );
 
     if (
       !Array.isArray(data.records) ||
       !Array.isArray(data.reflections)
     ) {
-      throw Error();
+      throw new Error('Invalid backup');
     }
 
     if (
-      confirm('Replace your current notes with this backup?')
+      confirm(
+        'Replace your current notes with this backup?'
+      )
     ) {
+
       state = {
         records: data.records,
         reflections: data.reflections
       };
 
       persist();
+
       renderRecords();
+
       renderReflections();
+
     }
-  } catch {
-    alert('This is not a valid Vinyl Room backup file.');
+
+  } catch (error) {
+
+    alert(
+      'This is not a valid Vinyl Room backup file.'
+    );
+
   }
 
-  e.target.value = '';
+  event.target.value = '';
+
 };
 
-$('#menu').onclick = () =>
+// =====================================================
+// MOBILE MENU
+// =====================================================
+
+$('#menu').onclick = () => {
+
   $('.topbar nav').classList.toggle('open');
 
-document.querySelectorAll('.topbar nav a').forEach(a => {
-  a.onclick = () =>
+};
+
+document.querySelectorAll(
+  '.topbar nav a'
+).forEach(link => {
+
+  link.onclick = () => {
+
     $('.topbar nav').classList.remove('open');
+
+  };
+
 });
 
+// =====================================================
+// INITIAL RENDER
+// =====================================================
+
 renderRecords();
+
 renderReflections();
